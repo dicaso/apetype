@@ -8,7 +8,7 @@ setup(name='argetype',
       author_email='christophe.vanneste@kaust.edu.sa',
       license='MIT',
       packages=find_packages(),
-      python_requires='>=3.7',
+      python_requires='>=3.6',
       install_requires=[],
       extras_require={
           'documentation': ['Sphinx']
