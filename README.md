@@ -1,8 +1,9 @@
 # argetype
 
-The argetype python package unites the builtin modules `argparse` and `typing`. Central is the ConfigBase class, which user classes can inherit from, to define there configurations. This is similar to configurations in the `luigi` package but with a much cleaner interface.
+The argetype python package unites the builtin modules `argparse` and `typing`. Central is the ConfigBase class, which user classes can inherit from, to define there configurations. This is similar to configurations in the `luigi` package but with a much cleaner interface. Build upon the config class is a task class, in analogy to `luigi`.
 
 ## Examples
+### Settings
 
     from argetype import ConfigBase
     class Settings(ConfigBase):
@@ -28,9 +29,34 @@ This will generate a CLI with one group of arguments.
 This will generate a CLI with grouped arguments, each group having the
 name of the inner class.
 
+### Tasks
+
+    from argtype.tasks import TaskBase
+    class TaskDep(TaskBase):
+        a: str = '/tmp/file1'
+    
+        def generate_output(self) -> str:
+            return self.a    
+    
+    class Task:    
+        # Task settings
+        a: int = 0
+        b: str = 'a'
+    
+        def generate_output1(self, task_dependence1: TaskDep) -> int:
+            print(task_dependence1.a)
+            return 0
+        
+        def generate_output2(self) -> str:
+            return 'a'
+    
+    task = Task()
+    task.run()
+    print(task._input, task._output)
+
 ## Perspective
 
-This is just the initial setup of this project, but already having a basic working implementation. In the future different inherited `ConfigBase` classes should be mergeable to make a argparse parser with subparsers. The settings class could also form the basis for a task class, such as the luigi task class.
+This is just the initial setup of this project, but already having a basic working implementation. In the future different inherited `ConfigBase` classes should be mergeable to make a argparse parser with subparsers.
 
 ## Todo
 
@@ -39,5 +65,5 @@ This is just the initial setup of this project, but already having a basic worki
     - subparser functionality
     - search a package for all defined settings classes and offer
       automated CLI interface
-    - task class
+    - inherit dependency settings in task class
 
