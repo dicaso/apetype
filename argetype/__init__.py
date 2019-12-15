@@ -26,6 +26,7 @@ class ConfigBase(object):
     def __init__(self, parse=True):
         self.groups = False
         self.setup()
+        self.make_call()
         self.make_parser()
         if parse:
             self.parse_args(None if isinstance(parse, bool) else parse)
@@ -114,8 +115,30 @@ class ConfigBase(object):
                     'type': typ,
             }
             )
-        
 
+    def set_settings(self, vardict):
+        for attr in vardict:
+            # TODO check type
+            self.__setattr__(attr, vardict[attr])
+            # print(attr,vardict[attr])
+
+    def make_call(self):
+        from types import FunctionType
+        variables = ', '.join([
+            s[0].replace('-','') # TODO add default value
+            for s in sorted(
+                self._settings,
+                key=lambda x: x[1]['default'] is None,
+                reverse=True
+            )
+        ])
+        call_code = compile(f'''def set_variables(self, {variables}):
+            self.set_settings(locals())
+        ''', "<string>", "exec")
+        call_func = FunctionType(call_code.co_consts[0], globals(), "set_variables")
+        setattr(self.__class__, '__call__', call_func)
+        # could also orverwrite __init__, if call to super().__init__ is included, but this should be optional as otherwise it will not work for the argparse workflow side
+        
     def make_parser(self, **kwargs):
         import argparse
         self.parser = argparse.ArgumentParser(**kwargs)

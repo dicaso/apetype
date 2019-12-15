@@ -12,9 +12,9 @@ Example:
     ...     def generate_output(self) -> str:
     ...         return self.a    
     ... 
-    ... class Task:    
+    ... class Task(TaskBase):    
     ...     # Task settings
-    ...     a: int = 0
+    ...     a: int = 10
     ...     b: str = 'a'
     ... 
     ...     def generate_output1(self, task_dependence1: TaskDep) -> int:
@@ -22,7 +22,17 @@ Example:
     ...         return 0
     ...     
     ...     def generate_output2(self) -> str:
-    ...         return 'a'
+    ...         with self.env('sh') as env:
+    ...             env.exec('which python')
+    ...             return env.output
+    ... 
+    ...     def generate_output3(self) -> str:
+    ...         with self.env('py') as env:
+    ...             env.exec(f'''
+    ...             for i in range({self.a}):
+    ...                 print(i)
+    ...             ''')
+    ...             return env.output
     ... 
     ... task = Task()
     ... task.run()
@@ -30,6 +40,7 @@ Example:
 
 """ 
 
+import os
 import typing
 import inspect
 from collections import OrderedDict
@@ -70,3 +81,59 @@ class TaskBase(ConfigBase):
             )
             assert isinstance(return_value, return_type)
             self._output[fn] = return_value
+
+    def env(self, environment):
+        return ExecEnvironment(environment)
+
+class ExecEnvironment(object):
+    predefined_envs = {
+        'sh': ['bash', []],
+        'py': ['python', []]
+    }
+    
+    def __init__(self, command, options=[]):
+        import threading
+        import shutil
+        self.lock = threading.Lock()
+        self.command = shutil.which(
+            self.predefined_envs[command][0]
+            if command in self.predefined_envs else command
+        )
+        self.options = (options if options else
+            self.predefined_envs[command][1]
+            if command in self.predefined_envs else []
+        )
+
+    def __enter__(self):
+        import tempfile
+        self.lock.acquire()
+        self.tmpfile = tempfile.NamedTemporaryFile(mode = 'w+t', delete = False)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # TODO log issues
+        os.remove(self.tmpfile.name)
+        self.lock.release()
+
+    def exec(self, script, check = True, reident=True):
+        import subprocess
+        import re
+        
+        # reident
+        if reident:
+            identspace = re.compile(r'.*\n(\W*)\w')
+            script = script.replace('\n'+identspace.match(script).groups()[0],'\n')
+            
+        # write tmp script file
+        try:
+            self.tmpfile.write(script)
+        finally:
+            self.tmpfile.close()
+            
+        # execute
+        proc = subprocess.run(
+            [self.command]+self.options+[self.tmpfile.name],
+            text = True, capture_output = True, check = check
+        )
+        self.output = proc.stdout
+        self.error = proc.stderr

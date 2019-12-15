@@ -38,9 +38,9 @@ name of the inner class.
         def generate_output(self) -> str:
             return self.a    
     
-    class Task:    
+    class Task(TaskBase):    
         # Task settings
-        a: int = 0
+        a: int = 10
         b: str = 'a'
     
         def generate_output1(self, task_dependence1: TaskDep) -> int:
@@ -48,11 +48,22 @@ name of the inner class.
             return 0
         
         def generate_output2(self) -> str:
-            return 'a'
+            with self.env('sh') as env:
+                env.exec('which python')
+                return env.output
+    
+        def generate_output3(self) -> str:
+            with self.env('py') as env:
+                env.exec(f'''
+                for i in range({self.a}):
+                    print(i)
+                ''')
+                return env.output
     
     task = Task()
     task.run()
     print(task._input, task._output)
+
 
 ## Perspective
 
