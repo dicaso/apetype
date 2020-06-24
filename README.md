@@ -1,6 +1,6 @@
 # argetype
 
-The argetype python package unites the builtin modules `argparse` and `typing`. Central is the ConfigBase class, which user classes can inherit from, to define there configurations. This is similar to configurations in the `luigi` package but with a much cleaner interface. Build upon the config class is a task class, in analogy to `luigi`.
+The argetype python package unites the builtin modules `argparse` and `typing`. Central is the ConfigBase class, which user classes can inherit from, to define their configurations. This is similar to configurations in the `luigi` package but with a much cleaner interface. Build upon the config class is a task class, in analogy to `luigi`.
 
 ## Examples
 ### Settings
@@ -71,7 +71,7 @@ This is just the initial setup of this project, but already having a basic worki
 
 ## Todo
 
-    - write tests
+    - write tests (ideally also functionality to automate writing task tests)
     - parse comments after typed variables to serve as CLI help
     - subparser functionality
     - search a package for all defined settings classes and offer
