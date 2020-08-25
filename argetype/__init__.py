@@ -25,6 +25,7 @@ class ConfigBase(object):
 
     def __init__(self, parse=True):
         self.groups = False
+        self._help = self.get_arg_docs()
         self.setup()
         self.make_call()
         self.make_parser()
@@ -70,7 +71,8 @@ class ConfigBase(object):
             # get_attr does not work so requesting vars
             self._settings = [
                 self.add_arg_format(p, cls_vars[p] if p in cls_vars else None,
-                                    annotations[p], p not in cls_vars
+                                    annotations[p], p not in cls_vars,
+                                    self._help[p] if p in self._help else None
                 )
                 for p in annotations
             ]
@@ -83,38 +85,67 @@ class ConfigBase(object):
                     self._settings[annot_grp] = [
                         self.add_arg_format(
                             p, grp_cls_vars[p] if p in grp_cls_vars else None,
-                            grp_annotations[p], p not in grp_cls_vars
+                            grp_annotations[p], p not in grp_cls_vars,
+                            self._help[p] if p in self._help else None
                         )
                         for p in grp_annotations
                     ]
         else:
             sig = inspect.signature(self.setup)
-            # source = inspect.getsource(self.setup)  # to extract help comments
-            # print(sig)
             self._settings = [
                 self.add_arg_format(
                     p, sig.parameters[p].default,
                     sig.parameters[p].annotation,
-                    not(bool(sig.parameters[p].default))
+                    not(bool(sig.parameters[p].default)),
+                    self._help[p] if p in self._help else None
                 )
                 for p in sig.parameters
             ]
 
     @staticmethod
-    def add_arg_format(name, default, typ, positional):
+    def add_arg_format(name, default, typ, positional, help):
         if typ is bool:
             return (f'--{name}', {
                     'default': default,
                     'action': 'store_const',
                     'const': not(default),
+                    'help': help
             }
             )
         else:
             return (name if positional else f'--{name}', {
                     'default': default,
                     'type': typ,
+                    'help': help
             }
             )
+
+    @classmethod
+    def get_arg_docs(cls):
+        import re
+        import inspect
+        commentdoc = re.compile(r'\s*(\w+)\s*:\s*\w+.*?#(.+)')
+        multilinedoc = re.compile(
+            r'\s*(?P<identifier>\w+)\s*:\s*\w+.*?\n\s*(?P<delimiter>"""|\'\'\')'
+            r'(?P<annot>(.*\n)+)\s*(?P=delimiter)',
+            re.MULTILINE)
+        try:
+            argdocs = dict([
+                commentdoc.match(line).groups()
+                for line in inspect.getsourcelines(cls)[0] if commentdoc.match(line)
+            ])
+            # Clean if not identifier and strip
+            argdocs = {arg:argdocs[arg].strip() for arg in argdocs if arg.isidentifier()}
+            argdocs.update({
+                match.group('identifier'):match.group('annot').replace('\n', ' ').strip()
+                for match in multilinedoc.finditer(inspect.getsource(cls))
+                if match.group('identifier').isidentifier()
+            })
+            return argdocs
+        except TypeError:
+            # TypeError will be raised when class is defined interactively
+            # Returning an empty dict in that case
+            return {}
 
     def set_settings(self, vardict):
         for attr in vardict:
@@ -150,7 +181,10 @@ class ConfigBase(object):
             else:
                 parser = self.parser
             for setting in (self._settings[grp] if self.groups else self._settings):
-                parser.add_argument(setting[0], **setting[1])
+                parser.add_argument(
+                    setting[0],
+                    **setting[1]
+                )
             if not self.groups:
                 break  # if no groups need to break
 
