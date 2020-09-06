@@ -66,19 +66,19 @@ class PbBase(RunInterface):
         import inspect
         self._tasks = typing.get_type_hints(self)
         self.steps = list(self._tasks)
-        self._default_values = {
+        self._step_management = {
             k:v for k,v in vars(type(self)).items()
             if k in self._tasks
         }
         for step in self.steps:
-            if step not in self._default_values:
-                self._default_values[step] = STEP(number=-1)
+            if step not in self._step_management:
+                self._step_management[step] = STEP(number=-1)
         self._ran = False
 
     def run(self):
         self._run_started = True
         for step in self.steps:
-            self._default_values[step](
+            self._step_management[step](
                 pipeline = self,
                 taskName = step
             )

@@ -152,10 +152,12 @@ class ConfigBase(object):
             return {}
 
     def set_settings(self, vardict):
+        if 'self' in vardict: vardict.pop('self')
         for attr in vardict:
             # TODO check type
             self.__setattr__(attr, vardict[attr])
             # print(attr,vardict[attr])
+        self.settings = vardict
 
     def make_call(self):
         from types import FunctionType

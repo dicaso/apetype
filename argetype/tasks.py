@@ -58,6 +58,8 @@ class RunInterface(abc.ABC):
 
 class TaskBase(ConfigBase, RunInterface):
     def __init__(self, parse=False):
+        # Parsing at object creation is not that useful
+        # Only when a task runs should it have all its settings.
         super().__init__(parse=parse)
         self.taskprep()
         self._input = {}
