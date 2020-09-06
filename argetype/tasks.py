@@ -41,14 +41,24 @@ Example:
 """ 
 
 import os
+import abc
 import typing
 import inspect
 from collections import OrderedDict
 from argetype import ConfigBase
 
-class TaskBase(ConfigBase):
-    def __init__(self):
-        super().__init__()
+class RunInterface(abc.ABC):
+    @abc.abstractmethod
+    def run(self):
+        pass
+
+    @abc.abstractmethod
+    def completed(self):
+        pass
+
+class TaskBase(ConfigBase, RunInterface):
+    def __init__(self, parse=False):
+        super().__init__(parse=parse)
         self.taskprep()
         self._input = {}
         self._output = {}
@@ -84,6 +94,9 @@ class TaskBase(ConfigBase):
 
     def env(self, environment):
         return ExecEnvironment(environment)
+
+    def completed(self):
+        return bool(self._output)
 
 class ExecEnvironment(object):
     predefined_envs = {

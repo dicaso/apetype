@@ -47,6 +47,10 @@ class ConfigBase(object):
         else:
             return f'<Uninitialised {self.__class__.__name__}>'
 
+    def __str__(self):
+        return self.__repr__().replace(
+            'Namespace(', 'Settings:\n\n').replace(', ', '\n')[:-1]
+
     def setup(self):
         """Can be overwritten by inheriting classes.
         Allows defining parameters with type hints.
@@ -156,7 +160,9 @@ class ConfigBase(object):
     def make_call(self):
         from types import FunctionType
         variables = ', '.join([
-            s[0].replace('-','') # TODO add default value
+            s[0].replace('-','') + ('' if s[1]['default'] is None else
+                                     '='+repr(s[1]['default'])
+            )
             for s in sorted(
                 self._settings,
                 key=lambda x: x[1]['default'] is None,
@@ -166,7 +172,16 @@ class ConfigBase(object):
         call_code = compile(f'''def set_variables(self, {variables}):
             self.set_settings(locals())
         ''', "<string>", "exec")
-        call_func = FunctionType(call_code.co_consts[0], globals(), "set_variables")
+        # Find code sub object:
+        #for i in range(len(call_code.co_consts)):
+        #    if type(call_code) is type(call_code.co_consts[i]):
+        #        code = call_code.co_consts[i]
+        #        break
+        code_pos = 0 if call_code.co_consts[-1] is None else len(call_code.co_consts[-1])
+        call_func = FunctionType(
+            call_code.co_consts[code_pos], globals(), "set_variables",
+            argdefs = call_code.co_consts[-1] if '=' in variables else None
+        )
         setattr(self.__class__, '__call__', call_func)
         # could also orverwrite __init__, if call to super().__init__ is included, but this should be optional as otherwise it will not work for the argparse workflow side
         
