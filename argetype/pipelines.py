@@ -22,18 +22,25 @@ Example:
     ... from argetype.tasks import TaskBase
     ... 
     ... class TaskA(TaskBase):
-    ...     pass
+    ...     a: int = 1
+    ... 
+    ...     def out1(self) -> int:
+    ...         return self.a**2
     ... 
     ... class TaskB(TaskBase):
     ...     dependence: TaskBase
+    ...     b: int = 2
+    ... 
+    ...     def out2(self) -> int:
+    ...         return self.dependence.a * self.b
     ... 
     ... class TaskC(TaskBase):
     ...     taskB: TaskB
     ... 
     ... class Pipeline(PbBase):
-    ...     dependence: TaskA = STEP()
-    ...     taskB: TaskB
-    ...     end:   TaskC = STEP(input=('dependence', 'taskB'))
+    ...     taskA: TaskA = STEP()
+    ...     taskB: TaskB = STEP(input={'dependence': 'taskA'})
+    ...     end:   TaskC = STEP() # will automatically serve taskB
     ... 
     ... pipeline = Pipeline()
     ... pipeline.run()

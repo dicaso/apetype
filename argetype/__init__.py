@@ -179,7 +179,7 @@ class ConfigBase(object):
         #    if type(call_code) is type(call_code.co_consts[i]):
         #        code = call_code.co_consts[i]
         #        break
-        code_pos = 0 if call_code.co_consts[-1] is None else len(call_code.co_consts[-1])
+        code_pos = 0 if call_code.co_consts[-1] is None else -4
         call_func = FunctionType(
             call_code.co_consts[code_pos], globals(), "set_variables",
             argdefs = call_code.co_consts[-1] if '=' in variables else None
