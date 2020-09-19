@@ -71,9 +71,13 @@ class TaskBase(ConfigBase, RunInterface):
         # Small utility function to sort members in order of appearance
         def memberline(m):
             try:
-                return m[1].__func__.__code__.co_firstlineno
+                return m[1].__code__.co_firstlineno
             except AttributeError:
-                return -1
+                try:
+                    # Interactive code may need extra attribute
+                    return m[1].__func__.__code__.co_firstlineno
+                except:
+                    return -1
     
         self._output_functions = OrderedDict([
             (name, inspect.signature(fun))
@@ -85,8 +89,15 @@ class TaskBase(ConfigBase, RunInterface):
         ])
 
     def run(self, fail=True):
+        # Task can declare a verbose attribute used in this run
+        try: verbose = self.__getattribute__('verbose')
+        except AttributeError: verbose = False
+
+        # Run task subtask methods
         for fn in self._output_functions:
-            if fn in self._output: continue
+            if fn in self._output:
+                if verbose: print(fn, 'already generated output')
+                continue
             return_type = self._output_functions[fn].return_annotation
             # TODO could check here if return type is correct in earlier generated output
             parameters = self._output_functions[fn].parameters
@@ -112,9 +123,11 @@ class TaskBase(ConfigBase, RunInterface):
                         # check if attribute simply refers to 'self' or similar
                         if dependency not in ('_', 'self', 'task'):
                             print(dependency, 'not found') #TODO make warning
+            if verbose: print('Executing', fn, '...')
             return_value = self.__getattribute__(fn)(
                 **function_inputs
             )
+            if verbose: print('done')
             assert isinstance(return_value, return_type)
             self._output[fn] = return_value
 
