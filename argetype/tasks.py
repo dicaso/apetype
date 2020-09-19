@@ -67,29 +67,53 @@ class TaskBase(ConfigBase, RunInterface):
         
     def taskprep(self):
         cls = type(self)
+
+        # Small utility function to sort members in order of appearance
+        def memberline(m):
+            try:
+                return m[1].__func__.__code__.co_firstlineno
+            except AttributeError:
+                return -1
+    
         self._output_functions = OrderedDict([
-            (name, typing.get_type_hints(fun))
-            for name, fun in inspect.getmembers(cls, predicate=inspect.isfunction)
+            (name, inspect.signature(fun))
+            for name, fun in sorted(
+                    inspect.getmembers(cls, predicate=inspect.isfunction),
+                    key=memberline
+            )
             if typing.get_type_hints(fun)
         ])
 
     def run(self, fail=True):
         for fn in self._output_functions:
             if fn in self._output: continue
-            for dependency in self._output_functions[fn]:
-                if dependency == 'return':
-                    return_type = self._output_functions[fn][dependency]
-                    continue
-                if not dependency in self._input:
-                    deptask = self._output_functions[fn][dependency]()
+            return_type = self._output_functions[fn].return_annotation
+            # TODO could check here if return type is correct in earlier generated output
+            parameters = self._output_functions[fn].parameters
+            function_inputs = {}
+            for dependency in parameters:
+                if dependency in self._input:
+                    function_inputs[dependency] = self._input[dependency]
+                # If annotation present for dependency it should be a task class
+                elif parameters[dependency].annotation is not inspect._empty:
+                    # Instantiate dependency and run
+                    deptask = parameters[dependency].annotation()
                     deptask.run()
                     self._input[dependency] = deptask
+                    function_inputs[dependency] = deptask
+                # If no annotation it could be the output generated from one of the task methods
+                elif dependency in self._output:
+                    function_inputs[dependency] = self._output[dependency]
+                # Finally, it could also be an attribute of the task class
+                else:
+                    try:
+                        function_inputs[dependency] = self.__getattribute__(dependency)
+                    except AttributeError:
+                        # check if attribute simply refers to 'self' or similar
+                        if dependency not in ('_', 'self', 'task'):
+                            print(dependency, 'not found') #TODO make warning
             return_value = self.__getattribute__(fn)(
-                **{
-                    dependency: self._input[dependency]
-                    for dependency in self._output_functions[fn]
-                    if dependency != 'return'
-                }
+                **function_inputs
             )
             assert isinstance(return_value, return_type)
             self._output[fn] = return_value
