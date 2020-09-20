@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='argetype',
-      version='0.0.6',
+      version='0.0.7',
       description='Embracing builtin python modules argparse and typing',
       url='https://github.com/dicaso/argetype',
       author='Christophe Van Neste',

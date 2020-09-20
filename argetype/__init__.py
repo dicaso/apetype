@@ -131,7 +131,7 @@ class ConfigBase(object):
         commentdoc = re.compile(r'\s*(\w+)\s*:\s*\w+.*?#(.+)')
         multilinedoc = re.compile(
             r'\s*(?P<identifier>\w+)\s*:\s*\w+.*?\n\s*(?P<delimiter>"""|\'\'\')'
-            r'(?P<annot>(.*\n)+)\s*(?P=delimiter)',
+            r'(?P<annot>(.*\n)+?)\s*?(?P=delimiter)',
             re.MULTILINE)
         try:
             argdocs = dict([
