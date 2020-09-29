@@ -1,3 +1,7 @@
+Renaming project to apetype
+in future may split the project
+and put config part under argetype or arguetype
+
 # argetype
 
 The argetype python package unites the builtin modules `argparse` and `typing`. Central is the ConfigBase class, which user classes can inherit from, to define their configurations. This is similar to configurations in the `luigi` package but with a much cleaner interface. Build upon the config class is a task class, in analogy to `luigi`.
@@ -71,8 +75,14 @@ This is just the initial setup of this project, but already having a basic worki
 
 ## Todo
 
+    - ReportTask that automatically makes report and can inject report.print as print
+      - ReportTask run method returns dict with tabs, figures etc to make section
+    - autorun option for tasks
+    - task run method can take list of subtasks to run including optional subtasks
     - write tests (ideally also functionality to automate writing task tests)
-    - parse comments after typed variables to serve as CLI help
+      - a class that inherits from the task to test, but also from testcase mixin
+        the mixin contains test data for everything that needs to be tested
+      - generator to create a range of testcases based on a range of attribute values
     - subparser functionality
     - search a package for all defined settings classes and offer
       automated CLI interface
