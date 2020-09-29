@@ -1,4 +1,4 @@
-"""argetype tasks module takes the ConfigBase
+"""apetype tasks module takes the ConfigBase
 to build a inheritable TaskBase class around it.
 
 Todo:
@@ -45,7 +45,7 @@ import abc
 import typing
 import inspect
 from collections import OrderedDict
-from argetype import ConfigBase
+from .configs import ConfigBase
 
 class RunInterface(abc.ABC):
     @abc.abstractmethod

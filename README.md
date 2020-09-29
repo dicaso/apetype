@@ -1,15 +1,11 @@
-Renaming project to apetype
-in future may split the project
-and put config part under argetype or arguetype
+# APEtype
 
-# argetype
-
-The argetype python package unites the builtin modules `argparse` and `typing`. Central is the ConfigBase class, which user classes can inherit from, to define their configurations. This is similar to configurations in the `luigi` package but with a much cleaner interface. Build upon the config class is a task class, in analogy to `luigi`.
+The apetype python package unites the builtin modules `argparse` and `typing`. Central is the ConfigBase class, which user classes can inherit from, to define their configurations. This is similar to configurations in the `luigi` package but with a much cleaner interface. Build upon the config class is a task class, in analogy to `luigi`.
 
 ## Examples
 ### Settings
 
-    from argetype import ConfigBase
+    from apetype import ConfigBase
     class Settings(ConfigBase):
         a: int = 0 # an integer
         d: float = .1 # a float
@@ -19,7 +15,7 @@ The argetype python package unites the builtin modules `argparse` and `typing`. 
 
 This will generate a CLI with one group of arguments.
 
-    from argetype import ConfigBase
+    from apetype import ConfigBase
     class SettingsDeep(ConfigBase):
         class group1:
             a: int = 0

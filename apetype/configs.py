@@ -1,8 +1,6 @@
-"""argetype module
-
-Provides base class `Settings` that can be used
-for making a derivative class that contains typed
-settings, for a module or package.
+"""apetype configs module defines the core class ConfigBase
+that is also used as the starting point for Tasks and 
+ReportTasks, and wrapped in Pipelines
 """
 
 import typing

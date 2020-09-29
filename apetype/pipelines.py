@@ -1,4 +1,4 @@
-"""argetype pipelines module
+"""apetype pipelines module
 
 I have put a lot of philosophical thought into what is the difference
 between a pipeline and a task. In the implementation of this package
@@ -18,8 +18,8 @@ Todo:
     - extracting task settings
 
 Example:
-    >>> from argetype.pipelines import PbBase, step
-    ... from argetype.tasks import TaskBase
+    >>> from apetype.pipelines import PbBase, step
+    ... from apetype.tasks import TaskBase
     ... 
     ... class TaskA(TaskBase):
     ...     a: int = 1
