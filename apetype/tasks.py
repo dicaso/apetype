@@ -5,7 +5,7 @@ Todo:
     - dependency settings inheritance and setting
 
 Example:
-    >>> from argtype.tasks import TaskBase
+    >>> from apetype.tasks import TaskBase
     ... class TaskDep(TaskBase):
     ...     a: str = '/tmp/file1'
     ... 
@@ -57,15 +57,27 @@ class RunInterface(abc.ABC):
         pass
 
 class TaskBase(ConfigBase, RunInterface):
-    def __init__(self, parse=False):
-        # Parsing at object creation is not that useful
-        # Only when a task runs should it have all its settings.
-        super().__init__(parse=parse)
-        self.taskprep()
+    def __init__(self, parse=False, run=False):
+        """
+        Parsing at object creation is not that useful
+        Only when a task runs should it have all its settings.
+        When run is True, parse will also be set to True.
+
+        Args:
+          parse (bool): parse settings
+          run (bool|list): run the task upon creation, can also
+            be a list of subtasks to run.
+        """
+        super().__init__(parse=parse|bool(run))
+        self._taskprep()
         self._input = {}
         self._output = {}
+        if run:
+            self.run(
+                subtasks=None if isinstance(run,bool) else run
+            )
         
-    def taskprep(self):
+    def _taskprep(self):
         cls = type(self)
 
         # Small utility function to sort members in order of appearance
@@ -88,13 +100,20 @@ class TaskBase(ConfigBase, RunInterface):
             if typing.get_type_hints(fun)
         ])
 
-    def run(self, fail=True):
+    def run(self, subtasks=None, fail=True):
         # Task can declare a verbose attribute used in this run
         try: verbose = self.__getattribute__('verbose')
         except AttributeError: verbose = False
 
+        # If subtasks is a str (when only 1 subtask needs to be executed
+        # redefine it as a list to make compatible with the code
+        if isinstance(subtasks, str): subtasks = [subtasks]
+        
         # Run task subtask methods
         for fn in self._output_functions:
+            # If subtasks are specified, only run those
+            if subtasks and fn not in subtasks: continue
+            # If subtask already generated output continue
             if fn in self._output:
                 if verbose: print(fn, 'already generated output')
                 continue
@@ -136,6 +155,11 @@ class TaskBase(ConfigBase, RunInterface):
 
     def completed(self):
         return bool(self._output)
+
+class ReturnType(object):
+    def __init__(self, type, result):
+        self.type = type
+        self.result = result
 
 class ExecEnvironment(object):
     predefined_envs = {

@@ -37,7 +37,8 @@ class ConfigBase(object):
         if 'settings' in self.__dict__ and name in self.settings:
             return self.settings.__getattribute__(name)
         else:
-            return self.__dict__[name]
+            # Trick from pandas to ensure jedi completion works
+            return object.__getattribute__(self, name)
 
     def __repr__(self):
         if 'settings' in self.__dict__:
