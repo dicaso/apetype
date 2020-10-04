@@ -56,6 +56,24 @@ class RunInterface(abc.ABC):
     def completed(self):
         pass
 
+
+class ReturnTypeInterface(abc.ABC):
+    def __init__(self, type):
+        self.type = type
+
+    @abc.abstractmethod
+    def __call__(self, result):
+        pass
+    
+    @abc.abstractmethod
+    def preprocess(self):
+        pass
+
+    @abc.abstractmethod
+    def postprocess(self):
+        pass
+
+        
 class TaskBase(ConfigBase, RunInterface):
     def __init__(self, parse=False, run=False):
         """
@@ -147,20 +165,44 @@ class TaskBase(ConfigBase, RunInterface):
                 **function_inputs
             )
             if verbose: print('done')
-            assert isinstance(return_value, return_type)
-            self._output[fn] = return_value
+            if issubclass(return_type, ReturnTypeInterface):
+                return_instance = return_type()
+                self._output[fn] = return_instance(
+                    task = self,
+                    function = fn,
+                    result = return_value
+                )
+            else:
+                assert isinstance(return_value, return_type)
+                self._output[fn] = return_value
 
     def env(self, environment):
         return ExecEnvironment(environment)
 
     def completed(self):
         return bool(self._output)
+        
+class PrintInject(object):
+    def print(self, *args, **kwargs):
+        """Method that can be used instead of print, to
+        capture the stdout.
 
-class ReturnType(object):
-    def __init__(self, type, result):
-        self.type = type
-        self.result = result
-
+        When called without args or kwargs, returns the
+        current buffer and resets it.
+        """
+        from io import StringIO
+        if not args and not kwargs:
+            printout = self._printout
+            del self._printout
+            return printout
+        elif not 'file' in kwargs:
+            out = StringIO()
+            print(*args, file=out, **kwargs)
+            print(out.getvalue(), end='')
+            try: self._printout += out.getvalue()
+            except AttributeError: self._printout = out.getvalue()
+        else: print(*args, **kwargs)
+        
 class ExecEnvironment(object):
     predefined_envs = {
         'sh': ['bash', []],
