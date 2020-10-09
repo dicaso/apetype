@@ -46,7 +46,18 @@ class TaskReport(TaskBase, PrintInject):
         super().run(*args, **kwargs)
         self.report.outputPDF(show=show)
 
+    def _cache_postprocess(self, previous_output):
+        """_cache_postprocess defines logic to execute
+        after loading cached results.
 
+        For the ReportTask this is just adding
+        cached sections to the current report.
+        """
+        import leopard as lp
+        if isinstance(previous_output, lp.Section):
+            self.report.sections.append(previous_output)
+        return previous_output
+        
 class TaskSection(dict, ReturnTypeInterface):
     def __init__(self):
         ReturnTypeInterface.__init__(self, dict)

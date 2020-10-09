@@ -173,6 +173,9 @@ class TaskBase(ConfigBase, RunInterface):
                 if load_cache and os.path.exists(cachefilename) and not isinstance(
                         return_annotation, SKIPCACHE):
                     self._output[fn] = pickle.load(open(cachefilename, 'rb'))
+                    if hasattr(self, '_cache_postprocess'):
+                        # Inheriting TaskBase classes can define logic for handling cache
+                        self._output[fn] = self._cache_postprocess(self._output[fn])
                     if verbose: print(fn, 'cached output loaded')
                     continue
             return_type = return_annotation if not isinstance(
