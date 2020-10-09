@@ -14,11 +14,10 @@ Example:
     ...
     ...     def section_1(_) -> TaskSection:
     ...         import pandas as pd
-    ...         return {
-    ...           'tables':{
-    ...           'tab1':
-    ...            pd.DataFrame({'a': [1, 2], 'b': ['c', 'd']})}
-    ...         }
+    ...         return [
+    ...           ('tab1', pd.DataFrame({'a': [1, 2], 'b': ['c', 'd']})),
+    ...           ('tab2', pd.DataFrame({'c': [1, 2], 'd': ['c', 'd']}))
+    ...         ]
     ...
     ...     def section_2_with_figure(_) -> TaskSection:
     ...         import matplotlib.pyplot as plt
@@ -53,8 +52,26 @@ class TaskSection(dict, ReturnTypeInterface):
         ReturnTypeInterface.__init__(self, dict)
 
     def __call__(self, task, function, result):
+        import inspect
+        from collections import OrderedDict
+        from matplotlib.figure import Figure
+        import pandas as pd
+        if isinstance(result, list):
+            # Optionally result can be a list of tuples
+            # figures and tables will then be extracted in order
+            figures = OrderedDict([r for r in result if isinstance(r[1],Figure)])
+            tables = OrderedDict(
+                [r for r in result
+                 if isinstance(r[1],pd.DataFrame)
+                 or isinstance(r[1],pd.Series)]
+            )
+            result = dict([r for r in result if r[0] not in figures.keys() or tables.keys()])
+            if figures: result['figures'] = figures
+            if tables: result['tables'] = tables
         if 'title' not in result:
             result['title'] = function.replace('_', ' ').capitalize()
+        if 'text' not in result and inspect.getdoc(task.__getattribute__(function)):
+            result['text'] = inspect.getdoc(task.__getattribute__(function))
         if hasattr(task, '_printout'):
             if 'code' in result:
                 result['code'] += task.print()

@@ -13,8 +13,8 @@ class ConfigBase(object):
     ('--name', keyword dict for the parser.add_argument function)
 
     The recommended way to build a SettingsBase object, is to
-    inherit from it and define the `setup` method
-    (see SettingsBase.setup docstring)
+    inherit from it and define the `_setup` method
+    (see SettingsBase._setup docstring)
 
     Args:
       parse (bool | list): if True, already parse arguments.
@@ -24,7 +24,7 @@ class ConfigBase(object):
     def __init__(self, parse=True):
         self.groups = False
         self._help = self.get_arg_docs()
-        self.setup()
+        self._setup()
         self.make_call()
         self.make_parser()
         if parse:
@@ -50,16 +50,16 @@ class ConfigBase(object):
         return self.__repr__().replace(
             'Namespace(', 'Settings:\n\n').replace(', ', '\n')[:-1]
 
-    def setup(self):
+    def _setup(self):
         """Can be overwritten by inheriting classes.
         Allows defining parameters with type hints.
-        Overwritten setup methods need to call `super().setup()`
+        Overwritten _setup methods need to call `super()._setup()`
         at the end.
 
         Example:
         >>> class Settings(SettingsBase):
-        ...     def setup(_, a: int = 5, b: float = .1, c: str = 'a'):
-        ...          super().setup()
+        ...     def _setup(_, a: int = 5, b: float = .1, c: str = 'a'):
+        ...          super()._setup()
         ... settings = Settings()
         """
         import inspect
@@ -94,7 +94,7 @@ class ConfigBase(object):
                         for p in grp_annotations
                     ]
         else:
-            sig = inspect.signature(self.setup)
+            sig = inspect.signature(self._setup)
             self._settings = [
                 self.add_arg_format(
                     p, sig.parameters[p].default,

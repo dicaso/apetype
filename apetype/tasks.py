@@ -44,6 +44,7 @@ import os
 import abc
 import typing
 import inspect
+import pickle
 from collections import OrderedDict
 from .configs import ConfigBase
 
@@ -73,6 +74,28 @@ class ReturnTypeInterface(abc.ABC):
     def postprocess(self):
         pass
 
+class SKIP(ReturnTypeInterface):
+    # SKIP subtasks
+    # if subtask is explicitly mentioned in run list
+    # reset type to type SKIP was instantiated with
+    def __call__(self, result):
+        pass
+    def preprocess(self):
+        # Returns SKIP instance type
+        return self.type
+    def postprocess(self):
+        pass
+
+class SKIPCACHE(ReturnTypeInterface):
+    # Could also consider a factory method for both
+    # Inheritance does not work because isinstance needs to be separate
+    def __call__(self, result):
+        pass
+    def preprocess(self):
+        # Returns SKIP instance type
+        return self.type
+    def postprocess(self):
+        pass
         
 class TaskBase(ConfigBase, RunInterface):
     def __init__(self, parse=False, run=False):
@@ -118,7 +141,7 @@ class TaskBase(ConfigBase, RunInterface):
             if typing.get_type_hints(fun)
         ])
 
-    def run(self, subtasks=None, fail=True):
+    def run(self, subtasks=None, fail=True, load_cache=False):
         # Task can declare a verbose attribute used in this run
         try: verbose = self.__getattribute__('verbose')
         except AttributeError: verbose = False
@@ -129,13 +152,32 @@ class TaskBase(ConfigBase, RunInterface):
         
         # Run task subtask methods
         for fn in self._output_functions:
+            return_annotation = self._output_functions[fn].return_annotation
+            
             # If subtasks are specified, only run those
             if subtasks and fn not in subtasks: continue
+            elif isinstance(return_annotation, SKIP):
+                if subtasks and fn in subtasks:
+                    return_annotation = return_annotation.preprocess()
+                else: continue
             # If subtask already generated output continue
             if fn in self._output:
                 if verbose: print(fn, 'already generated output')
                 continue
-            return_type = self._output_functions[fn].return_annotation
+            elif hasattr(self, 'cache'):
+                # If cache is set as attribute check if previous output can be loaded
+                cachefilename = os.path.join(
+                    self.cache,
+                    f'{fn}.pickle'
+                )
+                if load_cache and os.path.exists(cachefilename) and not isinstance(
+                        return_annotation, SKIPCACHE):
+                    self._output[fn] = pickle.load(open(cachefilename, 'rb'))
+                    if verbose: print(fn, 'cached output loaded')
+                    continue
+            return_type = return_annotation if not isinstance(
+                return_annotation, SKIPCACHE) else return_annotation.preprocess()
+
             # TODO could check here if return type is correct in earlier generated output
             parameters = self._output_functions[fn].parameters
             function_inputs = {}
@@ -175,6 +217,9 @@ class TaskBase(ConfigBase, RunInterface):
             else:
                 assert isinstance(return_value, return_type)
                 self._output[fn] = return_value
+            if hasattr(self, 'cache') and not isinstance(return_annotation, SKIPCACHE):
+                # Write out output in cache dir if provided
+                pickle.dump(self._output[fn], open(cachefilename, 'wb'))
 
     def env(self, environment):
         return ExecEnvironment(environment)
