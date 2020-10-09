@@ -39,11 +39,17 @@ class TaskReport(TaskBase, PrintInject):
         # if not `pip install leopard`
         # args and kwargs passed to super run
         import leopard as lp
+        import inspect
         self.report = lp.Report(
             title = self.title,
-            outfile = self.outfile
+            outfile = self.outfile,
+            intro = inspect.getdoc(self) or ''
         )
+        # // for newlines
+        self.report.settings['doubleslashnewline'] = True
+        # call super run to generate output
         super().run(*args, **kwargs)
+        # output the report
         self.report.outputPDF(show=show)
 
     def _cache_postprocess(self, previous_output):
@@ -83,6 +89,8 @@ class TaskSection(dict, ReturnTypeInterface):
             result['title'] = function.replace('_', ' ').capitalize()
         if 'text' not in result and inspect.getdoc(task.__getattribute__(function)):
             result['text'] = inspect.getdoc(task.__getattribute__(function))
+        if 'clearpage' not in result and hasattr(task, 'clearpage'):
+            result['clearpage'] = task.clearpage
         if hasattr(task, '_printout'):
             if 'code' in result:
                 result['code'] += task.print()
