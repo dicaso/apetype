@@ -143,7 +143,9 @@ class TaskBase(ConfigBase, RunInterface):
 
     def run(self, subtasks=None, fail=True, load_cache=False):
         # Task can declare a verbose attribute used in this run
-        try: verbose = self.__getattribute__('verbose')
+        try:
+            from .utils import termstyle as ts
+            verbose = self.__getattribute__('verbose')
         except AttributeError: verbose = False
 
         # If subtasks is a str (when only 1 subtask needs to be executed
@@ -162,7 +164,7 @@ class TaskBase(ConfigBase, RunInterface):
                 else: continue
             # If subtask already generated output continue
             if fn in self._output:
-                if verbose: print(fn, 'already generated output')
+                if verbose: print(f'{ts.GREEN}{fn}{ts.RESET}', 'already generated output')
                 continue
             elif hasattr(self, 'cache'):
                 # If cache is set as attribute check if previous output can be loaded
@@ -176,7 +178,7 @@ class TaskBase(ConfigBase, RunInterface):
                     if hasattr(self, '_cache_postprocess'):
                         # Inheriting TaskBase classes can define logic for handling cache
                         self._output[fn] = self._cache_postprocess(self._output[fn])
-                    if verbose: print(fn, 'cached output loaded')
+                    if verbose: print(f'{ts.GREEN}{fn}{ts.RESET}', 'cached output loaded')
                     continue
             return_type = return_annotation if not isinstance(
                 return_annotation, SKIPCACHE) else return_annotation.preprocess()
@@ -205,11 +207,11 @@ class TaskBase(ConfigBase, RunInterface):
                         # check if attribute simply refers to 'self' or similar
                         if dependency not in ('_', 'self', 'task'):
                             print(dependency, 'not found') #TODO make warning
-            if verbose: print('Executing', fn, '...')
+            if verbose: print(f'{ts.BOLD}Executing{ts.RESET}', f'{ts.GREEN}{fn}{ts.RESET}', '...')
             return_value = self.__getattribute__(fn)(
                 **function_inputs
             )
-            if verbose: print('done')
+            if verbose: print(f'{ts.BOLD}done{ts.RESET}')
             if issubclass(return_type, ReturnTypeInterface):
                 return_instance = return_type()
                 self._output[fn] = return_instance(

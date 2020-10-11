@@ -42,6 +42,7 @@ class TaskReport(TaskBase, PrintInject):
         import inspect
         self.report = lp.Report(
             title = self.title,
+            author = self.author if hasattr(self, 'author') else None,
             outfile = self.outfile,
             intro = inspect.getdoc(self) or ''
         )
@@ -50,7 +51,7 @@ class TaskReport(TaskBase, PrintInject):
         # call super run to generate output
         super().run(*args, **kwargs)
         # output the report
-        self.report.outputPDF(show=show)
+        self.report.outputPDF(show=show,geometry_options=True)
 
     def _cache_postprocess(self, previous_output):
         """_cache_postprocess defines logic to execute
