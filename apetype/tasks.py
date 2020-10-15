@@ -48,6 +48,7 @@ import pickle
 from collections import OrderedDict
 from .configs import ConfigBase
 
+# Interface for tasks and pipelines
 class RunInterface(abc.ABC):
     @abc.abstractmethod
     def run(self):
@@ -57,7 +58,7 @@ class RunInterface(abc.ABC):
     def completed(self):
         pass
 
-
+# Interfaces for logic to perform on subtask return values
 class ReturnTypeInterface(abc.ABC):
     def __init__(self, type):
         self.type = type
@@ -96,7 +97,26 @@ class SKIPCACHE(ReturnTypeInterface):
         return self.type
     def postprocess(self):
         pass
-        
+
+# Interfaces for logic to perform on subtask value injections
+class InjectInterface(abc.ABC):
+    @abc.abstractmethod
+    def __call__(self, parameter):
+        pass
+
+class InjectCopy(InjectInterface):
+    """To avoid having side effects on injected parameters,
+    objects such as a pd.DataFrame can use this to inject
+    a copy instead
+    """
+    def __call__(self, parameter):
+        return parameter.copy()
+
+class InjectItems(InjectInterface):
+    def __call__(self, parameter, function, **parameters):
+        pass
+    
+# Base class for tasks
 class TaskBase(ConfigBase, RunInterface):
     def __init__(self, parse=False, run=False):
         """
@@ -141,6 +161,61 @@ class TaskBase(ConfigBase, RunInterface):
             if typing.get_type_hints(fun)
         ])
 
+    def _dependencies(self, subtask):
+        """Get the dependencies for the subtask.
+        If one of the dependencies is not available yet,
+        returns False. A dependency is always first looked
+        up into the task's input dict, i.c. external dependencies,
+        secondly in the output dict, lastly the task attributes.
+
+        Args:
+          subtask (str): method str of the task
+        
+        Returns:
+          dict | False
+        """
+        parameters = self._output_functions[subtask].parameters
+        function_inputs = {}
+        for dependency in parameters:
+            if dependency in self._input:
+                function_inputs[dependency] = self._input[dependency]
+            # If annotation present for dependency it should have RunInterface or InjectInterface
+            elif parameters[dependency].annotation is not inspect._empty:
+                annotation = parameters[dependency].annotation
+                if issubclass(annotation, RunInterface):
+                    # Instantiate dependency and run
+                    deptask = annotation() # TODO handling settings subtask
+                    deptask.run()
+                    self._input[dependency] = deptask
+                    function_inputs[dependency] = deptask
+                elif issubclass(annotation, InjectInterface):
+                    try: function_inputs[dependency] = annotation()(self._output[dependency])
+                    except KeyError:
+                        if dependency in self._output_functions: return False
+                        else:
+                            print('Currently InjectInterface only on task subtask output')
+                            raise
+                else:
+                    raise Exception(
+                        'Only RunInterface or InjectInterface supported for param annotation'
+                    )
+            # If no annotation it could be the output generated from one of the task methods
+            elif dependency in self._output:
+                function_inputs[dependency] = self._output[dependency]
+            # Finally, it could also be an attribute of the task class
+            else:
+                try:
+                    function_inputs[dependency] = self.__getattribute__(dependency)
+                except AttributeError:
+                    # check if attribute simply refers to 'self' or similar
+                    if dependency not in ('_', 'self', 'task'):
+                        if dependency in self._output_functions:
+                            return False
+                        else:
+                            print(dependency, 'not defined/found')
+                            raise
+        return function_inputs
+            
     def run(self, subtasks=None, fail=True, load_cache=False):
         # Task can declare a verbose attribute used in this run
         try:
@@ -184,29 +259,7 @@ class TaskBase(ConfigBase, RunInterface):
                 return_annotation, SKIPCACHE) else return_annotation.preprocess()
 
             # TODO could check here if return type is correct in earlier generated output
-            parameters = self._output_functions[fn].parameters
-            function_inputs = {}
-            for dependency in parameters:
-                if dependency in self._input:
-                    function_inputs[dependency] = self._input[dependency]
-                # If annotation present for dependency it should be a task class
-                elif parameters[dependency].annotation is not inspect._empty:
-                    # Instantiate dependency and run
-                    deptask = parameters[dependency].annotation()
-                    deptask.run()
-                    self._input[dependency] = deptask
-                    function_inputs[dependency] = deptask
-                # If no annotation it could be the output generated from one of the task methods
-                elif dependency in self._output:
-                    function_inputs[dependency] = self._output[dependency]
-                # Finally, it could also be an attribute of the task class
-                else:
-                    try:
-                        function_inputs[dependency] = self.__getattribute__(dependency)
-                    except AttributeError:
-                        # check if attribute simply refers to 'self' or similar
-                        if dependency not in ('_', 'self', 'task'):
-                            print(dependency, 'not found') #TODO make warning
+            function_inputs = self._dependencies(fn)
             if verbose: print(f'{ts.BOLD}Executing{ts.RESET}', f'{ts.GREEN}{fn}{ts.RESET}', '...')
             return_value = self.__getattribute__(fn)(
                 **function_inputs
@@ -233,6 +286,10 @@ class TaskBase(ConfigBase, RunInterface):
         return bool(self._output)
         
 class PrintInject(object):
+    """Mixin class to add print diverting logic to a task.
+    Classes that inherit this class, next to TaskBase can
+    inject print in the subtasks.
+    """
     def print(self, *args, **kwargs):
         """Method that can be used instead of print, to
         capture the stdout.
