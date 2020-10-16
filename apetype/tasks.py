@@ -100,8 +100,13 @@ class SKIPCACHE(ReturnTypeInterface):
 
 # Interfaces for logic to perform on subtask value injections
 class InjectInterface(abc.ABC):
+    """Any InjectInterface (II) has to define a __call__ routine
+    that takes the parameter that was annotated with the II, the
+    subtask name and a flag dict. Flags can be modified, but 
+    __call__ should only return the transformed parameter.
+    """
     @abc.abstractmethod
-    def __call__(self, parameter):
+    def __call__(self, parameter, subtask, flags):
         pass
 
 class InjectCopy(InjectInterface):
@@ -109,12 +114,18 @@ class InjectCopy(InjectInterface):
     objects such as a pd.DataFrame can use this to inject
     a copy instead
     """
-    def __call__(self, parameter):
+    def __call__(self, parameter, subtask, flags):
         return parameter.copy()
 
 class InjectItems(InjectInterface):
-    def __call__(self, parameter, function, **parameters):
-        pass
+    """The passed parameter should be of type list, tuple, or generator.
+    An enumerate of the parameter is returned.
+    """
+    def __call__(self, parameter, subtask, flags):
+        flags['injectitems'] = subtask # TODO make set that can be zipped
+        flags['injectitems_len'] = len(parameter)
+        # currently only one parameter should have InjectItems
+        return enumerate(parameter)
     
 # Base class for tasks
 class TaskBase(ConfigBase, RunInterface):
@@ -176,6 +187,7 @@ class TaskBase(ConfigBase, RunInterface):
         """
         parameters = self._output_functions[subtask].parameters
         function_inputs = {}
+        flags = {} # can be set by InjectInterface
         for dependency in parameters:
             if dependency in self._input:
                 function_inputs[dependency] = self._input[dependency]
@@ -189,7 +201,9 @@ class TaskBase(ConfigBase, RunInterface):
                     self._input[dependency] = deptask
                     function_inputs[dependency] = deptask
                 elif issubclass(annotation, InjectInterface):
-                    try: function_inputs[dependency] = annotation()(self._output[dependency])
+                    try: function_inputs[dependency] = annotation()(
+                            self._output[dependency], dependency, flags
+                    )
                     except KeyError:
                         if dependency in self._output_functions: return False
                         else:
@@ -214,9 +228,18 @@ class TaskBase(ConfigBase, RunInterface):
                         else:
                             print(dependency, 'not defined/found')
                             raise
-        return function_inputs
+        # Return function_inputs for executing
+        if not flags:
+            return function_inputs
+        else:
+            if 'injectitems' in flags:
+                parameterlist = function_inputs.pop(flags['injectitems'])
+                return (flags['injectitems_len'], (
+                    (item[0],{**function_inputs, flags['injectitems']:item[1]})
+                    for item in parameterlist
+                ))
             
-    def run(self, subtasks=None, fail=True, load_cache=False):
+    def run(self, subtasks=None, fail=True, load_cache=False, return_tmp=False):
         # Task can declare a verbose attribute used in this run
         try:
             from .utils import termstyle as ts
@@ -259,11 +282,45 @@ class TaskBase(ConfigBase, RunInterface):
                 return_annotation, SKIPCACHE) else return_annotation.preprocess()
 
             # TODO could check here if return type is correct in earlier generated output
-            function_inputs = self._dependencies(fn)
             if verbose: print(f'{ts.BOLD}Executing{ts.RESET}', f'{ts.GREEN}{fn}{ts.RESET}', '...')
-            return_value = self.__getattribute__(fn)(
-                **function_inputs
-            )
+            function_inputs = self._dependencies(fn)
+            if not function_inputs:
+                raise Exception(f'Unmet dependencies for {fn}')
+            if isinstance(function_inputs, dict):
+                # regular situation -> one function_inputs
+                return_value = self.__getattribute__(fn)(
+                    **function_inputs
+                )
+            else: # function_inputs is a generator
+                from collections.abc import Iterable
+                complete_output, function_inputs = function_inputs
+                if isinstance(subtasks, dict) and isinstance(subtasks[fn], Iterable):
+                    return_value = {
+                        fi[0]: self.__getattribute__(fn)(**fi[1])
+                        for fi in function_inputs
+                        if fi[0] in subtasks[fn]
+                    }
+                    if return_tmp: return return_value
+                    try:
+                        self._output_tmp[fn].update(return_value)
+                        # Check if tmp result is complete
+                        if len(self._output_tmp[fn]) == complete_output:
+                            return_value = [
+                                self._output_tmp[fn][i]
+                                for i in sorted(self._output_tmp[fn])
+                            ]
+                            del self._output_tmp[fn]
+                    except AttributeError:
+                        self._output_tmp = {fn: return_value}
+                        return
+                    except KeyError:
+                        self._output_tmp[fn] = return_value
+                        return
+                else:
+                    return_value = [
+                        self.__getattribute__(fn)(**fi[1])
+                        for fi in function_inputs
+                    ]
             if verbose: print(f'{ts.BOLD}done{ts.RESET}')
             if issubclass(return_type, ReturnTypeInterface):
                 return_instance = return_type()
