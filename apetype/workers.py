@@ -129,7 +129,6 @@ class WorkerProcess(mp.Process):
                     partial_result = self.task.run(
                             {subtask: range(self.number,dynamic_injectitems_len,lock._value)}, return_tmp=True
                     )
-                    print(partial_result, self.name)
                     for k,v in partial_result.items():
                         # updating on the managed dict gave racing issues
                         self.task._output_tmp[subtask][k] = v

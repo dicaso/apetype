@@ -122,10 +122,15 @@ class InjectItems(InjectInterface):
     An enumerate of the parameter is returned.
     """
     def __call__(self, parameter, subtask, flags):
-        flags['injectitems'] = subtask # TODO make set that can be zipped
-        flags['injectitems_len'] = len(parameter)
-        # currently only one parameter should have InjectItems
-        return enumerate(parameter)
+        try:
+            flags['injectitems'].add(subtask)
+            assert flags['injectitems_len'] == len(parameter)
+        except KeyError:
+            flags['injectitems'] = {subtask}
+            flags['injectitems_len'] = len(parameter)
+        except AssertionError:
+            raise Exception('All InjectItems params dynamic lists need to have same size')
+        return zip([subtask]*len(parameter), parameter)
     
 # Base class for tasks
 class TaskBase(ConfigBase, RunInterface):
@@ -233,10 +238,10 @@ class TaskBase(ConfigBase, RunInterface):
             return function_inputs
         else:
             if 'injectitems' in flags:
-                parameterlist = function_inputs.pop(flags['injectitems'])
+                parameterlist = zip(*[function_inputs.pop(k) for k in flags['injectitems']])
                 return (flags['injectitems_len'], (
-                    (item[0],{**function_inputs, flags['injectitems']:item[1]})
-                    for item in parameterlist
+                    (itemnr,{**function_inputs, **dict(injitems)})
+                    for itemnr, injitems in enumerate(parameterlist)
                 ))
             
     def run(self, subtasks=None, fail=True, load_cache=False, return_tmp=False):
