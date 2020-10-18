@@ -25,3 +25,8 @@ Module documentation
 .. automodule:: apetype
    :members:
 
+.. automodule:: apetype.configs
+   :members:
+
+.. automodule:: apetype.tasks
+   :members:
