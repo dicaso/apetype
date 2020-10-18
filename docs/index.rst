@@ -25,14 +25,22 @@ Module documentation
 .. automodule:: apetype
    :members:
 
+Configurations
+--------------
 .. automodule:: apetype.configs
    :members:
 
+Tasks
+-----
 .. automodule:: apetype.tasks
    :members:
 
+Multiprocessing
+---------------
 .. automodule:: apetype.workers
    :members:
 
+Reports
+-------
 .. automodule:: apetype.reports
    :members:
