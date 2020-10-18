@@ -30,3 +30,9 @@ Module documentation
 
 .. automodule:: apetype.tasks
    :members:
+
+.. automodule:: apetype.workers
+   :members:
+
+.. automodule:: apetype.reports
+   :members:
