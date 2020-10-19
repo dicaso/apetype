@@ -17,8 +17,9 @@ class ConfigBase(object):
     (see SettingsBase._setup docstring)
 
     Args:
-      parse (bool | list): if True, already parse arguments.
-        Can also be a list that will then be passed on as args.
+      parse (bool|list|dict): if True, already parse arguments.
+        Can also be a list that will then be passed on as args,
+        all list items are converted to strings.
     """
 
     def __init__(self, parse=True):
@@ -28,7 +29,14 @@ class ConfigBase(object):
         self.make_call()
         self.make_parser()
         if parse:
-            self.parse_args(None if isinstance(parse, bool) else parse)
+            if isinstance(parse, bool):
+                self.parse_args()
+            elif isinstance(parse, list):
+                self.parse_args([str(p) for p in parse])
+            elif isinstance(parse, dict):
+                self(**parse)
+            else:
+                raise ValueError('parse was not bool|list|dict')
 
     def __getitem__(self, key):
         return self.settings.__getattribute__(key)
@@ -64,7 +72,10 @@ class ConfigBase(object):
         """
         import inspect
         cls = type(self)
-        cls_vars = vars(cls)
+        cls_vars = {}
+        for c in cls.mro()[::-1]:
+            if issubclass(c, ConfigBase) and c is not ConfigBase:
+                cls_vars.update(vars(c))
         # getting hints from self does not always work
         self._annotations = annotations = typing.get_type_hints(cls)
         self._annotation_groups = annotation_groups = [

@@ -11,27 +11,27 @@ The main process should therefore execute:
 
 
 Example:
->>> from apetype.tasks import TaskBase, SKIP, SKIPCACHE, InjectCopy, InjectItems
-... from apetype.workers import Manager
-... import time, numpy as np
-... 
-... class Task(TaskBase):
-...     a: int = 5
-... 
-...     def ar(_, a) -> np.ndarray:
-...         return np.array([a*i for i in range(10)])
-... 
-...     def aplus10(_, ar: InjectItems) -> list:
-...         print('y', ar)
-...         time.sleep(2)
-...         return ar+10
-... 
-...     def amaal10(_, ar, aplus10) -> np.ndarray:
-...         return ar*aplus10
-... 
-... task = Task(parse=True)
-... manager = Manager(task, max_workers_x_subtask=2)
-... manager.start()
+    >>> from apetype.tasks import TaskBase, SKIP, SKIPCACHE, InjectCopy, InjectItems
+    ... from apetype.workers import Manager
+    ... import time, numpy as np
+    ... 
+    ... class Task(TaskBase):
+    ...     a: int = 5
+    ... 
+    ...     def ar(_, a) -> np.ndarray:
+    ...         return np.array([a*i for i in range(10)])
+    ... 
+    ...     def aplus10(_, ar: InjectItems) -> list:
+    ...         print('y', ar)
+    ...         time.sleep(2)
+    ...         return ar+10
+    ... 
+    ...     def amaal10(_, ar, aplus10) -> np.ndarray:
+    ...         return ar*aplus10
+    ... 
+    ... task = Task(parse=True)
+    ... manager = Manager(task, max_workers_x_subtask=2)
+    ... manager.start()
 """
 import os
 import multiprocessing as mp

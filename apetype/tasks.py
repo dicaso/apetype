@@ -145,7 +145,7 @@ class TaskBase(ConfigBase, RunInterface):
           run (bool|list): run the task upon creation, can also
             be a list of subtasks to run.
         """
-        super().__init__(parse=parse|bool(run))
+        super().__init__(parse=parse or bool(run))
         self._taskprep()
         self._input = {}
         self._output = {}
