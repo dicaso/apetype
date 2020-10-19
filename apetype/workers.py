@@ -9,6 +9,7 @@ The main process should therefore execute:
 >>> import matplotlib
 ... matplotlib.use('pdf')
 
+
 Example:
 >>> from apetype.tasks import TaskBase, SKIP, SKIPCACHE, InjectCopy, InjectItems
 ... from apetype.workers import Manager

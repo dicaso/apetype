@@ -12,6 +12,7 @@ Welcome to APEtype's documentation!
    configurations
    tasks
    multiprocessing
+   testings
    reports
    examples
 
@@ -28,13 +29,13 @@ Introduction
 
 "To type or not to type?", that is the age-old question in
 programming. To avoid a steep learning curve and make explorative
-programming fun, python has opted for dynamic typing. Recently type
-hints have been introduced, to accomodate a need for stronger typing
-context. This gap in python typing, had been partly met in the past by
-packages such as ``luigi``, developed at *Spotify*.
+programming fun, Python has opted for dynamic typing. In *Python 3.5*
+type hints have been introduced, to accomodate a need for stronger
+typing context. This gap in Python typing, had been partly met in the
+past by packages such as ``luigi``, developed at *Spotify*.
 
 I used ``luigi`` as the base for my pipelines and bioinformatics
-workflows in my tool ``genairics`` before being aware of the type
+workflows in my tool ``genairics`` before being aware of type
 hints. As I learned about the type hints, I quickly realised the
 ``luigi.Parameter`` could be more elegantly replaced by type hints.
 
@@ -44,10 +45,21 @@ library for creating workflows and pipelines, that can easily be
 started as function calls or command line executables out of the
 box. The workflows can also divide their tasks across the multiple
 processors in a system, and in the future, with few modifications of
-the current code base, they should also be deployable on the cloud.
+the current code base, they should also be deployable on the cloud. A
+class to be used to write Tests is also provided, turning a workflow
+in a testable, robust piece of code.
   
 Quick start
 ===========
 .. automodule:: apetype
    :members:
 
+Epilogue
+========
+
+Python or typing purists, might take issue with some of the design
+decisions in ``apetype``, as the typing goes beyond what one might
+expect from that. However, to quote PEP 484 on type hints: *Note that
+this PEP still explicitly does NOT prevent other uses of annotations,
+nor does it require (or forbid) any particular processing of
+annotations, even when they conform to this specification.*
