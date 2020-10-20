@@ -37,9 +37,9 @@ import os
 import multiprocessing as mp
 from .utils import CountSemaphore
 from .configs import ConfigBase
-from .tasks import InjectItems
+from .tasks import RunInterface, InjectItems
 
-class Manager(ConfigBase):
+class Manager(ConfigBase, RunInterface):
     workers: int = os.cpu_count()
     max_workers_x_subtask: int = workers
     
@@ -90,6 +90,22 @@ class Manager(ConfigBase):
         for p in self.task._output_functions[subtask].parameters.values():
             if p.annotation is InjectItems: return True
         return False
+
+    # RunInterface
+    def run(self): # Usual task options not implemented
+        return self.start()
+
+    def completed(self):
+        return self.task.completed()
+
+    @property
+    def _input(self):
+        return self.task._input
+
+    @property
+    def _output(self):
+        return self.task._output
+
 
 class WorkerProcess(mp.Process):
     def __init__(self, task, number): #, queue=None):

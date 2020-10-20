@@ -9,6 +9,8 @@ on instantiating, will be read from the command line.
 
     >>> import apetype as at
     ... import apetype.tests
+    ... import apetype.workers
+    ... 
     ... class MySettings(at.ConfigBase):
     ...     pos1: int # After comment shown as help
     ...     pos2: str
@@ -32,10 +34,19 @@ the task `run` method all subtasks or a selection are executed in order.
     ...     kw2: int = 3
     ...     def addition(_, pos1, kw2) -> int:
     ...         return pos1+kw2
-    ... mytask = MyTask(parse={'pos1':1.5,'pos2':'1'})
+    ...     def multiply(_, pos2, kw1) -> str:
+    ...         return pos2*(kw1+_.kw2)
+    ... mytask = MyTask(parse={'pos1':1,'pos2':'1'})
     ... mytask.run()
-    ... print(mytask._output['addition']
+    ... print(mytask._output['addition'], mytask._output['multiply'])
 
+Use all your system's processing capacity by delegating the task
+to a manager:
+
+    >>> mpTask = at.workers.Manager(MyTask(parse={'pos1':1,'pos2':'1'}))
+    ... mpTask.run()
+    ... print(mpTask._output)
+    
 Finally, in this quick start, one might want to test the outcome of
 running a task and all its subtasks. `apetype.tests` defines the
 `TestTask` class that can be inherited from together with, and in
