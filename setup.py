@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='apetype',
-      version='0.0.5-dev0',
+      version='0.0.5',
       description='Embracing builtin python modules argparse and typing for pipelines',
       url='https://github.com/dicaso/apetype',
       author='Christophe Van Neste',
