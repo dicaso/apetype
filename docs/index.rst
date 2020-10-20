@@ -52,7 +52,7 @@ in a testable, robust piece of code.
 Install
 =======
 
-    pip install apetype
+    ``pip install apetype``
     
 
 Quick start
