@@ -49,12 +49,15 @@ the current code base, they should also be deployable on the cloud. A
 class to be used to write Tests is also provided, turning a workflow
 in a testable, robust piece of code.
 
+
 Install
 =======
+
 ::
 
    pip install apetype
-    
+
+
 
 Quick start
 ===========
