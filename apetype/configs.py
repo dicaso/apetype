@@ -30,7 +30,7 @@ class ConfigBase(object):
         self.make_parser()
         if parse:
             if isinstance(parse, bool):
-                self.parse_args()
+                self.parse_args(None)
             elif isinstance(parse, list):
                 self.parse_args([str(p) for p in parse])
             elif isinstance(parse, dict):
@@ -143,6 +143,9 @@ class ConfigBase(object):
             r'\s*(?P<identifier>\w+)\s*:\s*\w+.*?\n\s*(?P<delimiter>"""|\'\'\')'
             r'(?P<annot>(.*\n)+?)\s*?(?P=delimiter)',
             re.MULTILINE)
+        onelinedoc = re.compile(
+            r'\s*(?P<identifier>\w+)\s*:\s*\w+.*?\n\s*(?P<delimiter>"|\')'
+            r'(?P<annot>.+)(?P=delimiter)')
         try:
             argdocs = dict([
                 commentdoc.match(line).groups()
@@ -150,6 +153,11 @@ class ConfigBase(object):
             ])
             # Clean if not identifier and strip
             argdocs = {arg:argdocs[arg].strip() for arg in argdocs if arg.isidentifier()}
+            argdocs.update({
+                match.group('identifier'):match.group('annot').replace('\n', ' ').strip()
+                for match in onelinedoc.finditer(inspect.getsource(cls))
+                if match.group('identifier').isidentifier()
+            })
             argdocs.update({
                 match.group('identifier'):match.group('annot').replace('\n', ' ').strip()
                 for match in multilinedoc.finditer(inspect.getsource(cls))
