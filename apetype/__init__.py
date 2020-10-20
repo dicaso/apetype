@@ -1,4 +1,4 @@
-"""apetype module
+"""APEtype module documentation
 
 `ConfigBase` is the starting point for anything APEtype. It is a base
 class to use to turn any script into a library function or
@@ -24,11 +24,15 @@ on instantiating, will be read from the command line.
     ... print(settings.kw1)
 
 To execute a program, 2 questions are important: "What should it do?"
-and "What should it know to do that?". The latter is handled by `ConfigBase`,
-the former is handled by the `TaskBase`, which contains the same configuration
-options and derives from `ConfigBase`, but also contains *to do* logic.
-Any method that has type annotation is considered a subtask, and when calling
-the task `run` method all subtasks or a selection are executed in order.
+and "What should it know to do that?". The latter is handled by
+`ConfigBase`, the former is handled by the `TaskBase`, which contains
+the same configuration options and derives from `ConfigBase`, but also
+contains *to do* logic.  Any method that has type annotation is
+considered a subtask, and when calling the task `run` method all
+subtasks or a selection are executed in order. Any `ConfigBase`
+attributes can be injected in a subtask method, or can be accessed as
+attribute on the self object, which is denoted as `_` to differentiate
+it from regular Python object methods.
 
     >>> class MyTask(at.TaskBase, MySettings):
     ...     kw2: int = 3
