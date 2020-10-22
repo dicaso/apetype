@@ -44,7 +44,8 @@ class Manager(ConfigBase, RunInterface):
     max_workers_x_subtask: int = workers
     
     def __init__(self, task, *args, **kwargs):
-        super().__init__()
+        # Init ConfigBase, as Manager does not have positionals parse=True
+        super().__init__(parse=True)
         # Set Manager options passed as kwargs
         if args or kwargs: self(*args, **kwargs)
         self.task = task

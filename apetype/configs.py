@@ -12,7 +12,7 @@ class ConfigBase(object):
     following format:
     ('--name', keyword dict for the parser.add_argument function)
 
-    The recommended way to build a SettingsBase object, is to
+    The recommended way to build a ConfigBase object, is to
     inherit from it and define the `_setup` method
     (see SettingsBase._setup docstring)
 
@@ -119,20 +119,20 @@ class ConfigBase(object):
     @staticmethod
     def add_arg_format(name, default, typ, positional, help):
         if typ is bool:
-            return (f'--{name.replace("_","-")}', {
+            return (name, (f'--{name.replace("_","-")}', {
                     'default': default,
                     'action': 'store_const',
                     'const': not(default),
                     'help': help
             }
-            )
+            ))
         else:
-            return (name if positional else f'--{name.replace("_","-")}', {
+            return (name, (name if positional else f'--{name.replace("_","-")}', {
                     'default': default,
                     'type': typ,
                     'help': help
             }
-            )
+            ))
 
     @classmethod
     def get_arg_docs(cls):
@@ -180,12 +180,12 @@ class ConfigBase(object):
     def make_call(self):
         from types import FunctionType
         variables = ', '.join([
-            s[0].replace('-','') + ('' if s[1]['default'] is None else
-                                     '='+repr(s[1]['default'])
+            s[0] + ('' if s[1][1]['default'] is None else
+                                     '='+repr(s[1][1]['default'])
             )
             for s in sorted(
                 self._settings,
-                key=lambda x: x[1]['default'] is None,
+                key=lambda x: x[1][1]['default'] is None,
                 reverse=True
             )
         ])
@@ -217,8 +217,8 @@ class ConfigBase(object):
                 parser = self.parser
             for setting in (self._settings[grp] if self.groups else self._settings):
                 parser.add_argument(
-                    setting[0],
-                    **setting[1]
+                    setting[1][0],
+                    **setting[1][1]
                 )
             if not self.groups:
                 break  # if no groups need to break
