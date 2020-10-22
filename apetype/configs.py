@@ -119,7 +119,7 @@ class ConfigBase(object):
     @staticmethod
     def add_arg_format(name, default, typ, positional, help):
         if typ is bool:
-            return (f'--{name}', {
+            return (f'--{name.replace("_","-")}', {
                     'default': default,
                     'action': 'store_const',
                     'const': not(default),
@@ -127,7 +127,7 @@ class ConfigBase(object):
             }
             )
         else:
-            return (name if positional else f'--{name}', {
+            return (name if positional else f'--{name.replace("_","-")}', {
                     'default': default,
                     'type': typ,
                     'help': help
