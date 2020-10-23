@@ -20,14 +20,22 @@ class ConfigBase(object):
       parse (bool|list|dict): if True, already parse arguments.
         Can also be a list that will then be passed on as args,
         all list items are converted to strings.
+      prefix (bool): Whether or not to add the attribute name as  prefix
+        to dependency settings. Prefix setting is propagated to downstream
+        dependencies.
     """
 
-    def __init__(self, parse=True):
+    def __init__(self, parse=True, prefix=True):
         self.groups = False
+        self._prefix = prefix
         self._help = self.get_arg_docs()
+        if self.dependencies:
+            self._set_input()
         self._setup()
-        self.make_call()
-        self.make_parser()
+        if self.dependencies:
+            self._setup_from_deps()
+        self._make_call()
+        self._make_parser()
         if parse:
             if isinstance(parse, bool):
                 self.parse_args(None)
@@ -89,10 +97,15 @@ class ConfigBase(object):
                                     self._help[p] if p in self._help else None
                 )
                 for p in annotations
+                if not issubclass(annotations[p], ConfigBase)
+                # in future could make exception for parseable ConfigBase class
+                # also still need solution for list|set|... annotations
             ]
             if annotation_groups:
                 self.groups = True
-                self._settings = OrderedDict(('default', self._settings)) if self._settings else OrderedDict()
+                self._settings = OrderedDict(
+                    ('default', self._settings)
+                ) if self._settings else OrderedDict()
                 for annot_grp in annotation_groups:
                     grp_annotations = typing.get_type_hints(cls_vars[annot_grp])
                     grp_cls_vars = vars(cls_vars[annot_grp])
@@ -116,6 +129,24 @@ class ConfigBase(object):
                 for p in sig.parameters
             ]
 
+    def _setup_from_deps(self):
+        for dependency in self._input:
+            if self._prefix:
+                depsettings = [
+                    (
+                        f'{dependency}_{s[0]}',
+                        (
+                            f'--{dependency}-{s[1][0][2:]}' if s[1][0].startswith('--')
+                            else f'{dependency}_{s[1][0]}',
+                            s[1][1]
+                        )
+                    )
+                    for s in self._input[dependency]._settings
+                ]
+            else:
+                depsettings = self._input[dependency]._settings
+            self._settings += depsettings
+        
     @staticmethod
     def add_arg_format(name, default, typ, positional, help):
         if typ is bool:
@@ -169,15 +200,19 @@ class ConfigBase(object):
             # Returning an empty dict in that case
             return {}
 
-    def set_settings(self, vardict):
+    def _set_settings(self, vardict):
+        from argparse import Namespace
         if 'self' in vardict: vardict.pop('self')
         for attr in vardict:
             # TODO check type
             self.__setattr__(attr, vardict[attr])
             # print(attr,vardict[attr])
-        self.settings = vardict
+        # To have consistent type of self.settings using Namespace
+        # to match self.parse_args
+        self.settings = Namespace(**vardict)
+        if self.dependencies: self._set_input_settings(vardict)
 
-    def make_call(self):
+    def _make_call(self):
         from types import FunctionType
         variables = ', '.join([
             s[0] + ('' if s[1][1]['default'] is None else
@@ -190,7 +225,7 @@ class ConfigBase(object):
             )
         ])
         call_code = compile(f'''def set_variables(self, {variables}):
-            self.set_settings(locals())
+            self._set_settings(locals())
         ''', "<string>", "exec")
         # Find code sub object:
         #for i in range(len(call_code.co_consts)):
@@ -203,9 +238,8 @@ class ConfigBase(object):
             argdefs = call_code.co_consts[-1] if '=' in variables else None
         )
         setattr(self.__class__, '__call__', call_func)
-        # could also orverwrite __init__, if call to super().__init__ is included, but this should be optional as otherwise it will not work for the argparse workflow side
         
-    def make_parser(self, **kwargs):
+    def _make_parser(self, **kwargs):
         import argparse
         self.parser = argparse.ArgumentParser(**kwargs)
         if self.groups: self.group_parsers = {}
@@ -229,4 +263,55 @@ class ConfigBase(object):
         for a in self._annotations:
             if a in self.settings:
                 self.__setattr__(a, self.settings.__getattribute__(a))
+        if self.dependencies: self._set_input_settings(vars(self.settings))
         return self.settings
+
+    # Section for dealing with dependencies
+    @classmethod
+    def _get_dependencies(cls):
+        """Recursive property that lists all dependencies.
+        Returns None if no further dependencies.
+
+        `_get_dependencies` works recursive, because the main ConfigBase object
+        needs to know all the settings that have to be requested either through
+        a command line or function call.
+        """
+        dependency_tree = []
+        clsvars = cls.__annotations__
+        for attr in clsvars:
+            if (
+                    isinstance(clsvars[attr], type) and
+                    issubclass(clsvars[attr], ConfigBase)
+            ):
+                dependency = clsvars[attr]
+                dependency_tree.append(
+                    (attr, dependency, dependency._get_dependencies())
+                )
+
+        return dependency_tree if dependency_tree else None
+
+    @property
+    def dependencies(self):
+        return self._get_dependencies()
+
+    def _set_input(self):
+        # Instatiate every dependency ConfigBase without parsing
+        # this will be recursive as each ConfigBase will do the same for theirs
+        self._input = {
+            dep[0]:dep[1](parse=False, prefix=self._prefix)
+            for dep in self.dependencies
+        }
+
+    def _set_input_settings(self, vardict):
+        for dependency in self._input:
+            depsettingsset = {
+                f'{dependency}_{s[0]}' if self._prefix else s[0]
+                for s in self._input[dependency]._settings
+            }
+            self._input[dependency](
+                **{
+                    (k[len(dependency)+1:] if self._prefix else k):v
+                    for k,v in vardict.items()
+                    if k in depsettingsset
+                }
+            )
