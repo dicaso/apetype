@@ -1,6 +1,27 @@
 """apetype configs module defines the core class ConfigBase
 that is also used as the starting point for Tasks and 
-ReportTasks, and wrapped in Pipelines
+ReportTasks, and wrapped in Pipelines.
+
+Settings are defined as typed attributes on an inheriting ConfigBase class
+
+Example:
+
+    >>> import apetype as at
+    ... class DepSettings(at.ConfigBase):
+    ...     b: int
+    ...     b_b: float
+    ...     b_c: int = 4
+    ...     
+    ... class Settings(at.ConfigBase):
+    ...     depconfig: DepSettings
+    ...     a: int
+    ...     a_b: float
+    ...     a_c: int = 4
+    ... 
+    ... settings = Settings(parse=[1,1,1,1])
+    ... print(settings.depconfig_b, settings.a, settings.depconfig.b)
+    1 1 1
+
 """
 
 import typing
