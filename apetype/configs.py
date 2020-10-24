@@ -301,6 +301,9 @@ class ConfigBase(object):
             dep[0]:dep[1](parse=False, prefix=self._prefix)
             for dep in self.dependencies
         }
+        # Make dependencies accesible as attribute to self ConfigBase instance
+        for k,v in self._input.items():
+            self.__setattr__(k, v)
 
     def _set_input_settings(self, vardict):
         for dependency in self._input:
