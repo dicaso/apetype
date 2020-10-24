@@ -134,7 +134,7 @@ class InjectItems(InjectInterface):
     
 # Base class for tasks
 class TaskBase(ConfigBase, RunInterface):
-    def __init__(self, parse=False, run=False):
+    def __init__(self, parse=False, prefix=True, run=False):
         """
         Parsing at object creation is not that useful
         Only when a task runs should it have all its settings.
@@ -142,12 +142,16 @@ class TaskBase(ConfigBase, RunInterface):
 
         Args:
           parse (bool): parse settings
+          prefix (bool): prefix dependency tasks or configs with attribute name
           run (bool|list): run the task upon creation, can also
             be a list of subtasks to run.
         """
-        super().__init__(parse=parse or bool(run))
+        super().__init__(parse=parse or bool(run), prefix=prefix)
         self._taskprep()
-        self._input = {}
+        if not self.dependencies:
+            # subtasks might still contain dependencies that will be
+            # stored in self._input
+            self._input = {}
         self._output = {}
         if run:
             self.run(
@@ -251,6 +255,10 @@ class TaskBase(ConfigBase, RunInterface):
             verbose = self.__getattribute__('verbose')
         except AttributeError: verbose = False
 
+        # First check if external dependencies completed
+        if self.dependencies:
+            self._run_task_dependencies()
+        
         # If subtasks is a str (when only 1 subtask needs to be executed
         # redefine it as a list to make compatible with the code
         if isinstance(subtasks, str): subtasks = [subtasks]
@@ -346,6 +354,13 @@ class TaskBase(ConfigBase, RunInterface):
 
     def completed(self):
         return bool(self._output)
+
+    # Section for dealing with external task dependencies
+    def _run_task_dependencies(self):
+        # Will need to be overloaded for handling multiprocessing of deps
+        for dependency, deptask in self._input.items():
+            if isinstance(deptask, TaskBase) and not deptask.completed():
+                deptask.run()
         
 class PrintInject(object):
     """Mixin class to add print diverting logic to a task.

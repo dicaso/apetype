@@ -1,6 +1,6 @@
 import unittest
 
-class test_Manager(unittest.TestCase):
+class test_ConfigBase(unittest.TestCase):
     def setUp(self):
         import apetype as at
         class DepDepSettings(at.ConfigBase):
