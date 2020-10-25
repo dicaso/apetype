@@ -81,7 +81,7 @@ class ConfigBase(object):
         if 'settings' in self.__dict__:
             return str(self.settings)
         else:
-            return f'<Uninitialised {self.__class__.__name__}>'
+            return f'<Uninitialised @ {self.__class__.__name__}>'
 
     def __str__(self):
         return self.__repr__().replace(

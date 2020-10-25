@@ -1,4 +1,5 @@
 # APEtype
+<img title="apetype logo" src="apetype_logo.svg" width="200">
 
 The apetype python package unites the builtin modules `argparse` and
 `typing`. Central is the ConfigBase class, which user classes can
