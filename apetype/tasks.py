@@ -1,35 +1,52 @@
-"""apetype tasks module takes the ConfigBase
-to build a inheritable TaskBase class around it.
+"""apetype tasks module takes the ConfigBase to build an inheritable TaskBase
+class around it. Through using inheritance or including other TaskBase classes
+as dependencies, the result is an implicit pipeline. For explicit pipelines
+where the input and output of subsequent dependencies needs to be fitted, see
+the `apetype.pipelines`.
 
-Todo:
-    - dependency settings inheritance and setting
+In the example below, TaskBase dependencies is illustrated, and subtasks that
+are executed in a subprocess with either a shell or python interpreter.
+In the task subtasks, `self` is replaced with `_`. This is to make it clearer,
+that these methods are usually not called directly by the end-user. However,
+if so desired, `self` can be used. Furthermore, when writing tests, it can be
+appropriate to call the subtask methods directly, allowing to control what is
+being injected.
+
+TODO:
+  - for subtasks running in subprocesses, use the return_annotation to automate
+    when python syntax can be used, or transformed to the syntax of the interpreter
 
 Example:
-    >>> from apetype.tasks import TaskBase
-    ... class TaskDep(TaskBase):
+
+    >>> import apetype as at
+    ... class TaskDep(at.TaskBase):
     ...     a: str = '/tmp/file1'
     ... 
-    ...     def generate_output(self) -> str:
-    ...         return self.a    
+    ...     def generate_output(_, a) -> str:
+    ...         return a    
     ... 
-    ... class Task(TaskBase):    
+    ... class Task(at.TaskBase):    
     ...     # Task settings
     ...     a: int = 10
     ...     b: str = 'a'
     ... 
-    ...     def generate_output1(self, task_dependence1: TaskDep) -> int:
+    ...     # Task dependencies
+    ...     task_dependence1: TaskDep
+    ... 
+    ...     # Subtasks
+    ...     def generate_output1(_, task_dependence1) -> int:
     ...         print(task_dependence1.a)
     ...         return 0
     ...     
-    ...     def generate_output2(self) -> str:
-    ...         with self.env('sh') as env:
+    ...     def generate_output2(_) -> str:
+    ...         with _.env('sh') as env:
     ...             env.exec('which python')
     ...             return env.output
     ... 
-    ...     def generate_output3(self) -> str:
-    ...         with self.env('py') as env:
+    ...     def generate_output3(_) -> str:
+    ...         with _.env('py') as env:
     ...             env.exec(f'''
-    ...             for i in range({self.a}):
+    ...             for i in range({_.a}):
     ...                 print(i)
     ...             ''')
     ...             return env.output
@@ -181,7 +198,7 @@ class TaskBase(ConfigBase, RunInterface):
             if typing.get_type_hints(fun)
         ])
 
-    def _dependencies(self, subtask):
+    def _subtask_dependencies(self, subtask):
         """Get the dependencies for the subtask.
         If one of the dependencies is not available yet,
         returns False. A dependency is always first looked
@@ -296,8 +313,9 @@ class TaskBase(ConfigBase, RunInterface):
 
             # TODO could check here if return type is correct in earlier generated output
             if verbose: print(f'{ts.BOLD}Executing{ts.RESET}', f'{ts.GREEN}{fn}{ts.RESET}', '...')
-            function_inputs = self._dependencies(fn)
-            if not function_inputs:
+            function_inputs = self._subtask_dependencies(fn)
+            # Checking if function_inputs is False (empty is ok = no deps)
+            if function_inputs is False:
                 raise Exception(f'Unmet dependencies for {fn}')
             if isinstance(function_inputs, dict):
                 # regular situation -> one function_inputs
@@ -424,7 +442,9 @@ class ExecEnvironment(object):
         # reident
         if reident:
             identspace = re.compile(r'.*\n(\W*)\w')
-            script = script.replace('\n'+identspace.match(script).groups()[0],'\n')
+            if identspace.match(script):
+                # TODO should split over lines and then reassemble
+                script = script.replace('\n'+identspace.match(script).groups()[0],'\n')
             
         # write tmp script file
         try:

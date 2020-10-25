@@ -1,5 +1,12 @@
 """apetype pipelines module
 
+--------------------------------------------------------------
+WORK IN PROGRESS
+This module is not yet part of the documentation, and as such
+not yet fully implemented. Let me know if you would like to be
+able to use it.
+--------------------------------------------------------------
+
 I have put a lot of philosophical thought into what is the difference
 between a pipeline and a task. In the implementation of this package
 they both implement the RunInterface: they are supposed to run something

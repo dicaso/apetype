@@ -9,19 +9,22 @@ The main process should therefore execute:
 >>> import matplotlib
 ... matplotlib.use('pdf')
 
+Todo:
+    - connect to workers on other servers
+    - distribute TaskBase depedencies over the workers
 
 Example:
-    >>> from apetype.tasks import TaskBase, SKIP, SKIPCACHE, InjectCopy, InjectItems
-    ... from apetype.workers import Manager
+    >>> import apetype as at
+    ... import apetype.workers
     ... import time, numpy as np
     ... 
-    ... class Task(TaskBase):
+    ... class Task(at.TaskBase):
     ...     a: int = 5
     ... 
     ...     def ar(_, a) -> np.ndarray:
     ...         return np.array([a*i for i in range(10)])
     ... 
-    ...     def aplus10(_, ar: InjectItems) -> list:
+    ...     def aplus10(_, ar: at.tasks.InjectItems) -> list:
     ...         print('y', ar)
     ...         time.sleep(2)
     ...         return ar+10
@@ -30,7 +33,7 @@ Example:
     ...         return ar*aplus10
     ... 
     ... task = Task(parse=True)
-    ... manager = Manager(task, max_workers_x_subtask=2)
+    ... manager = at.workers.Manager(task, max_workers_x_subtask=2)
     ... manager.start()
 """
 import os
