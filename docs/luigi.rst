@@ -5,10 +5,12 @@ Comparison with luigi
 The major source of inspiration for the `apetype` package was `luigi`
 developed at `Spotify`. When it was developed, type hints were not a
 thing yet in `Python`, so it is very understandable that it was not
-used in `luigi`. Using a lot of luigi.Parameters makes the code look
-bloated and the way of inheritance between tasks did also not give
-issues. With that in mind, `apetype` was developed. In this section, a
-1 on 1 comparison with the toy example of `luigi`.
+used in `luigi`. Using a lot of ``luigi.Parameters`` makes the code
+look bloated and the way of inheritance between tasks did also not
+work smoothly for me, especially when dealing with task that needed to
+be executed for a dynamically generated list of samples. With that in
+mind, `apetype` was developed. In this section, a 1 on 1 comparison
+with the toy example of `luigi`.
 
 Top artists example
 -------------------
@@ -66,16 +68,16 @@ Aggregate Artist Streams with `apetype`
     ... class AggregateArtists(at.TaskBase):
     ...     date_interval: DateInterval
     ...
-    ...     def dates_list(_, date_interval) -> list:
+    ...     def date(_, date_interval) -> list:
     ...         return [d for d in date_interval.timedelta]
     ...  
     ...     def output(_, date_interval) -> pathlib.Path:
     ...         return pathlib.Path("data/artist_streams_%s.tsv" % date_interval)
     ... 
-    ...     def streams_list(_, dates_list: at.tasks.InjectItems) -> list:
-    ...         return Streams(dates_list)
+    ...     def streams_list(_, date: at.tasks.InjectItems) -> list:
+    ...         return Streams(date)
     ... 
-    ...     def main(_, streams_list, output):
+    ...     def main(_, streams_list, output) -> type(None):
     ...         artist_count = defaultdict(int)
     ... 
     ...         for input in streams_list:
