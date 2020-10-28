@@ -15,6 +15,7 @@ Welcome to APEtype's documentation!
    testings
    reports
    examples
+   luigi
 
 Indices and tables
 ==================
