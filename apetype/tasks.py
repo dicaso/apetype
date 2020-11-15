@@ -312,25 +312,54 @@ class TaskBase(ConfigBase, RunInterface):
                 return_annotation, SKIPCACHE) else return_annotation.preprocess()
 
             # TODO could check here if return type is correct in earlier generated output
+            # Execute function
             if verbose: print(f'{ts.BOLD}Executing{ts.RESET}', f'{ts.GREEN}{fn}{ts.RESET}', '...')
+            ## Regular function dependencies
             function_inputs = self._subtask_dependencies(fn)
             # Checking if function_inputs is False (empty is ok = no deps)
             if function_inputs is False:
                 raise Exception(f'Unmet dependencies for {fn}')
+            
+            ## Check if docstr requires execution
+            fn_exec_env = False
+            fn_docstr = inspect.getdoc(self.__getattribute__(fn))
+            if fn_docstr:
+                fn_docstr_lines = fn_docstr.split('\n')
+                # Test if first line is shebang
+                if (
+                        fn_docstr_lines[0].startswith('#!') or
+                        fn_docstr_lines[0] in ExecEnvironment.predefined_envs
+                ):
+                    fn_exec_env = ExecEnvironment(fn_docstr, script=True, reindent=False)
+                    fn_docstr = '\n'.join(fn_docstr_lines[1:])
+
             if isinstance(function_inputs, dict):
                 # regular situation -> one function_inputs
-                return_value = self.__getattribute__(fn)(
-                    **function_inputs
-                )
+                if fn_exec_env:
+                    with fn_exec_env:
+                        fn_exec_env.exec(fn_docstr, function_inputs)
+                        return_value = fn_exec_env.output
+                else:
+                    return_value = self.__getattribute__(fn)(
+                        **function_inputs
+                    )
             else: # function_inputs is a generator
                 from collections.abc import Iterable
                 complete_output, function_inputs = function_inputs
                 if isinstance(subtasks, dict) and isinstance(subtasks[fn], Iterable):
-                    return_value = {
-                        fi[0]: self.__getattribute__(fn)(**fi[1])
-                        for fi in function_inputs
-                        if fi[0] in subtasks[fn]
-                    }
+                    if fn_exec_env:
+                        return_value = {}
+                        for fi in function_inputs:
+                            if fi[0] in subtasks[fn]:
+                                with fn_exec_env:
+                                    fn_exec_env.exec(fn_docstr, fi[1])
+                                    return_value[fi[0]] = fn_exec_env.output
+                    else:
+                        return_value = {
+                            fi[0]: self.__getattribute__(fn)(**fi[1])
+                            for fi in function_inputs
+                            if fi[0] in subtasks[fn]
+                        }
                     if return_tmp: return return_value
                     try:
                         self._output_tmp[fn].update(return_value)
@@ -408,13 +437,33 @@ class PrintInject(object):
 class ExecEnvironment(object):
     predefined_envs = {
         'sh': ['bash', []],
-        'py': ['python', []]
+        'py': ['python', []],
+        'R': ['Rscript', []]
     }
     
-    def __init__(self, command, options=[]):
+    def __init__(self, command, options=[], script=False, reindent=True):
         import threading
         import shutil
         self.lock = threading.Lock()
+        self.reindent = reindent
+        
+        # If script is True, command is the script
+        if script:
+            script = command
+            scriptlines = script.split('\n')
+            if scriptlines[0].startswith('#!'):
+                command = scriptlines[0].split()[0][2:]
+                options = scriptlines[0].split()[1:]
+            elif scriptlines[0] in ExecEnvironment.predefined_envs:
+                command, options = ExecEnvironment.predefined_envs[
+                    scriptlines[0]
+                ]
+            else:
+                raise Exception(
+                    'Unknown script command in first line:', scriptlines[0]
+                )
+            
+        # Set command
         self.command = shutil.which(
             self.predefined_envs[command][0]
             if command in self.predefined_envs else command
@@ -435,12 +484,16 @@ class ExecEnvironment(object):
         os.remove(self.tmpfile.name)
         self.lock.release()
 
-    def exec(self, script, check = True, reident=True):
+    def exec(self, script, template = False, check = True):
         import subprocess
         import re
-        
-        # reident
-        if reident:
+
+        if template:
+            from jinja2 import Template
+            script = Template(script).render(**template)
+            
+        # reindent
+        if self.reindent:
             identspace = re.compile(r'.*\n(\W*)\w')
             if identspace.match(script):
                 # TODO should split over lines and then reassemble
