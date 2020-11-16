@@ -1,20 +1,25 @@
-"""apetype tasks module takes the ConfigBase to build an inheritable TaskBase
-class around it. Through using inheritance or including other TaskBase classes
-as dependencies, the result is an implicit pipeline. For explicit pipelines
-where the input and output of subsequent dependencies needs to be fitted, see
-the `apetype.pipelines`.
+"""apetype tasks module takes the ConfigBase to build an inheritable
+TaskBase class around it. Through using inheritance or including other
+TaskBase classes as dependencies, the result is an implicit
+pipeline. For explicit pipelines where the input and output of
+subsequent dependencies needs to be fitted, see the
+`apetype.pipelines`.
 
-In the example below, TaskBase dependencies is illustrated, and subtasks that
-are executed in a subprocess with either a shell or python interpreter.
-In the task subtasks, `self` is replaced with `_`. This is to make it clearer,
-that these methods are usually not called directly by the end-user. However,
-if so desired, `self` can be used. Furthermore, when writing tests, it can be
-appropriate to call the subtask methods directly, allowing to control what is
-being injected.
+In the example below, TaskBase dependencies is illustrated, and
+subtasks that are executed in a subprocess with either a shell or
+python2 interpreter. Calling a subprocess can be done by accessing the
+`env` attribute and specifying the command, followed by passing the
+string script, or more elegantly by specifying a subtask that only has
+a docstr. The first line in the docstr needs to specify the
+environment by either the simple str 'sh', 'py' for Python3, 'py2' for
+Python2, or 'R', or by writing a full shebang, i.e.: 
+'#!/usr/bin/env bash'.
 
-TODO:
-  - for subtasks running in subprocesses, use the return_annotation to automate
-    when python syntax can be used, or transformed to the syntax of the interpreter
+In the task subtasks, `self` is replaced with `_`. This is to make it
+clearer, that these methods are usually not called directly by the
+end-user. However, if so desired, `self` can be used. Furthermore,
+when writing tests, it can be appropriate to call the subtask methods
+directly, allowing to control what is being injected.
 
 Example:
 
@@ -43,13 +48,11 @@ Example:
     ...             env.exec('which python')
     ...             return env.output
     ... 
-    ...     def generate_output3(_) -> str:
-    ...         with _.env('py') as env:
-    ...             env.exec(f'''
-    ...             for i in range({_.a}):
-    ...                 print(i)
-    ...             ''')
-    ...             return env.output
+    ...     def generate_output3(_, a) -> str:
+    ...         '''py2
+    ...         for i in range({{a}}):
+    ...             print i
+    ...         '''
     ... 
     ... task = Task()
     ... task.run()
@@ -437,7 +440,8 @@ class PrintInject(object):
 class ExecEnvironment(object):
     predefined_envs = {
         'sh': ['bash', []],
-        'py': ['python', []],
+        'py': ['python3', []],
+        'py2': ['python2', []],
         'R': ['Rscript', []]
     }
     
