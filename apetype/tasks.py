@@ -490,8 +490,10 @@ class ExecEnvironment(object):
 
     def exec(self, script, template = False, check = True):
         import subprocess
+        import locale
         import re
-
+        from .utils import termstyle as ts
+        
         if template:
             from jinja2 import Template
             script = Template(script).render(**template)
@@ -510,9 +512,39 @@ class ExecEnvironment(object):
             self.tmpfile.close()
             
         # execute
-        proc = subprocess.run(
+        #try: proc = subprocess.run(
+        #    [self.command]+self.options+[self.tmpfile.name],
+        #    text = True, capture_output = True, check = check
+        #)
+        #except subprocess.CalledProcessError as e:
+        #    print(e.stdout)
+        #    print(e.stderr)
+        #    raise
+        encoding = locale.getlocale()[1]
+        proc = subprocess.Popen(
             [self.command]+self.options+[self.tmpfile.name],
-            text = True, capture_output = True, check = check
+            bufsize = 1,
+            stdin = 0,
+            stdout = subprocess.PIPE,
+            stderr = subprocess.PIPE,
+            encoding = encoding,
+            errors = 'xmlcharrefreplace' # display for encoding errors
         )
-        self.output = proc.stdout
-        self.error = proc.stderr
+        stdout = ''
+        while True:
+            charout = proc.stdout.read(1) # readline
+            if charout:
+                stdout += charout
+                print(charout, end='', flush=True)
+            if charout == '' and proc.poll() is not None:
+                break
+        stderr = proc.stderr.read()
+        if stderr:
+            print(f'{ts.RED}{stderr}{ts.RESET}')
+        if proc.poll() != 0:
+            raise subprocess.CalledProcessError(
+                proc.poll(), self.command, stdout, stderr
+            )
+        
+        self.output = stdout # proc.stdout
+        self.error = stderr  # proc.stderr
